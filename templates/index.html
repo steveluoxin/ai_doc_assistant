@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+    <head>
+        <title>AI Product Document Assistant</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 40px;
+                max-width: 900px;
+            }
+            h1 {
+                margin-bottom: 20px;
+            }
+            input,
+            select,
+            button {
+                padding: 8px;
+                margin-right: 10px;
+                font-size: 14px;
+            }
+            button {
+                cursor: pointer;
+            }
+            .section {
+                margin-top: 30px;
+            }
+            pre {
+                background-color: #f5f5f5;
+                padding: 15px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                border-radius: 6px;
+            }
+            .loading {
+                color: #888;
+                font-style: italic;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>AI Product Document Assistant (RAG Demo)</h1>
+
+        <div>
+            <input id="question" placeholder="Enter your question" size="50" />
+
+            <select id="task">
+                <option value="summary">Summary</option>
+                <option value="risk">Risk Analysis</option>
+                <option value="advice">Advice</option>
+            </select>
+
+            <h3>Upload Document</h3>
+            <input type="file" id="fileInput" />
+            <button onclick="upload()">Upload</button>
+
+            <button onclick="ask()">Ask</button>
+        </div>
+
+        <div class="section">
+            <h3>Rewritten Query</h3>
+            <pre id="rewrite"></pre>
+        </div>
+
+        <div class="section">
+            <h3>Answer</h3>
+            <pre id="answer"></pre>
+        </div>
+
+        <div class="section">
+            <h3>Retrieved Chunks (with Similarity Score)</h3>
+            <div id="chunks"></div>
+        </div>
+
+        <script>
+            async function ask() {
+                const question = document.getElementById("question").value;
+                const task = document.getElementById("task").value;
+
+                if (!question) {
+                    alert("Please enter a question.");
+                    return;
+                }
+
+                document.getElementById("rewrite").textContent = "Loading...";
+                document.getElementById("rewrite").classList.add("loading");
+                document.getElementById("answer").textContent = "Loading...";
+                document.getElementById("answer").classList.add("loading");
+
+                try {
+                    const response = await fetch("/ask", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ question, task }),
+                    });
+
+                    const data = await response.json();
+                    const chunksContainer = document.getElementById("chunks");
+                    chunksContainer.innerHTML = "";
+
+                    document
+                        .getElementById("rewrite")
+                        .classList.remove("loading");
+                    document
+                        .getElementById("answer")
+                        .classList.remove("loading");
+
+                    document.getElementById("rewrite").textContent =
+                        data.rewritten_query || "";
+                    if (
+                        typeof data.answer === "object" &&
+                        data.answer !== null
+                    ) {
+                        document.getElementById("answer").textContent =
+                            JSON.stringify(data.answer, null, 2);
+                    } else {
+                        document.getElementById("answer").textContent =
+                            data.answer || "";
+                    }
+                    // Render retrieved chunks if provided by backend
+                    if (Array.isArray(data.chunks)) {
+                        data.chunks.forEach((chunk) => {
+                            const item = document.createElement("div");
+                            item.style.marginBottom = "15px";
+                            item.style.padding = "10px";
+                            item.style.backgroundColor = "#f0f0f0";
+                            item.style.borderRadius = "6px";
+
+                            const title = document.createElement("div");
+                            title.style.fontWeight = "bold";
+                            title.textContent =
+                                "Module: " +
+                                (chunk.module || "N/A") +
+                                " | Score: " +
+                                (chunk.score !== undefined
+                                    ? chunk.score
+                                    : "N/A");
+
+                            const content = document.createElement("div");
+                            content.style.marginTop = "5px";
+                            content.style.whiteSpace = "pre-wrap";
+                            content.textContent = chunk.content || "";
+
+                            item.appendChild(title);
+                            item.appendChild(content);
+                            chunksContainer.appendChild(item);
+                        });
+                    }
+                } catch (error) {
+                    document
+                        .getElementById("rewrite")
+                        .classList.remove("loading");
+                    document
+                        .getElementById("answer")
+                        .classList.remove("loading");
+
+                    document.getElementById("rewrite").textContent = "";
+                    document.getElementById("answer").textContent =
+                        "Error: Failed to fetch response.";
+                    document.getElementById("chunks").innerHTML = "";
+                }
+            }
+            async function upload() {
+                const fileInput = document.getElementById("fileInput");
+                const file = fileInput.files[0];
+
+                if (!file) {
+                    alert("Please select a file");
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const response = await fetch("/upload", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const data = await response.json();
+                alert(data.message || data.error);
+            }
+        </script>
+    </body>
+</html>
