@@ -1,12 +1,11 @@
 from typing import List, Tuple
 import numpy as np
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
+from embedding import embed
 from utils import split_text
 from llm import call_llm
 from prompts import build_prompt
 
-# 加载 embedding 模型
-_embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 def build_trunks_and_embeddings(
@@ -61,9 +60,7 @@ def build_trunks_and_embeddings(
 
     flush_buffer()
 
-    embeddings = _embedding_model.encode(
-        chunks, convert_to_numpy=True, show_progress_bar=False
-    )
+    embeddings = [embed(chunk) for chunk in chunks]
 
     return chunks, embeddings
 
@@ -76,9 +73,7 @@ def embed_query(question: str) -> np.ndarray:
     注意：
     - 返回 shape: (embedding_dim,)
     """
-    embedding = _embedding_model.encode(
-        question, convert_to_numpy=True, show_progress_bar=False
-    )
+    embedding = embed(question)
     return embedding
 
 

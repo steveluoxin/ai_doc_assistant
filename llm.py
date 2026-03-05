@@ -14,6 +14,14 @@ client = OpenAI(
     base_url="https://api.deepseek.com"
 )
 
+def get_embedding(text: str):
+    """调用 DeepSeek API 获取 embedding"""
+    response = client.embeddings.create(
+        model="deepseek-embedding",
+        input=text
+    )
+    return response.data[0].embedding
+
 SYSTEM_PROMPT = """
     你是一个严格的 AI 接口实现助手。
     你必须：
