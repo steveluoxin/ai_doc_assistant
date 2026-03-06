@@ -4,6 +4,8 @@ import numpy as np
 # 判断是否使用 API embedding
 USE_API_EMBEDDING = os.getenv("USE_API_EMBEDDING", "false").lower() == "true"
 
+print("Initializing embedding...")
+
 if USE_API_EMBEDDING:
     try:
         from llm import get_embedding
@@ -26,7 +28,7 @@ else:
         raise ImportError("USE_API_EMBEDDING=False 但是未安装 sentence-transformers，请执行 'pip install sentence-transformers torch'")
 
     # 初始化本地模型，只初始化一次
-    model = SentenceTransformer("all-MiniLM-L6-v2")
+    model = SentenceTransformer("all-MiniLM-L6-v2", cache_folder="./models")
 
     def embed(text: str) -> np.ndarray:
         """
@@ -36,3 +38,5 @@ else:
             return model.encode(text)
         except Exception as e:
             raise RuntimeError(f"本地 embedding 生成失败: {e}")
+
+print("Initializing done")

@@ -1,6 +1,7 @@
 fastapi==0.110.0
 uvicorn==0.29.0
 sentence-transformers==2.6.1
+transformers==4.38.2
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.2.2
 numpy==1.26.4
