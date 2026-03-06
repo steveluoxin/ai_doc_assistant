@@ -2,12 +2,10 @@ fastapi==0.110.0
 uvicorn==0.29.0
 sentence-transformers==2.6.1
 torch==2.2.2
-transformers==4.57.6
 numpy==1.26.4
 scikit-learn==1.8.0
 python-docx==1.1.0
 python-multipart==0.0.9
 openai==1.14.3
 httpx==0.28.1
-requests==2.32.5
 python-dotenv==1.0.1
