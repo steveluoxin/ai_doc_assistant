@@ -40,6 +40,24 @@ SYSTEM_PROMPT = """
 def call_llm(prompt: str, task: str, timeout_sec: int = 10):
     schema_fallback = TASK_SCHEMAS.get(task, {})
 
+    if task == 'rewrite':
+        # Special handling for rewrite: return string
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.5,
+            "max_tokens": 800
+        }
+        try:
+            response = deepseek_request("v1/chat/completions", payload)
+            return response["choices"][0]["message"]["content"].strip()
+        except Exception:
+            return ""  # return empty string on failure
+
+    # Original behavior for other tasks
     payload = {
         "model": "deepseek-chat",
         "messages": [
