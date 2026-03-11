@@ -35,11 +35,12 @@ class AskRequest(BaseModel):
 
 @app.post("/ask")
 def ask(req: AskRequest):
-    rewritten_query = rewrite_query(req.question, structure)
+    # 所有任务类型都改写问题
+    rewritten_query = rewrite_query(req.question, structure, task=req.task)
 
     if req.task == "summary":
         results = retrieve_for_summary(
-            question=req.question,
+            question=rewritten_query,
             structure=structure,
             chunks=chunks,
             embeddings=embeddings,
@@ -54,14 +55,24 @@ def ask(req: AskRequest):
             top_k=6
         )
 
+    # 统一 results 结构为 (chunk, score, module)
+    normalized_results = []
+    for item in results:
+        if len(item) == 3:
+            normalized_results.append(item)
+        elif len(item) == 2:
+            c, s = item
+            normalized_results.append((c, s, "unknown"))
+
     answer = answer_with_rag(
         question=req.question,
-        retrieved_chunks=results,
+        retrieved_chunks=normalized_results,
         task=req.task
     )
 
     chunks_for_frontend = [
-        {"content": c, "score": s, "module": m} for c, s, m in results
+        {"content": c, "score": s, "module": m} 
+        for c, s, m in normalized_results
     ]
 
     return {
