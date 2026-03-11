@@ -85,8 +85,11 @@ def retrieve_top_k_chunks_with_score(
 
     top_score = similarities[sorted_indices[0]]
 
-    # 针对 risk/advice 降低过滤阈值
-    if task in ["risk", "advice"]:
+    # 针对 risk/advice 设置不同的过滤阈值
+    if task == "risk":
+        min_score = 0
+        relative_threshold = 0
+    elif task == "advice":
         min_score = 0.1
         relative_threshold = 0.35
 
