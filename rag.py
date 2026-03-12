@@ -48,7 +48,8 @@ def build_trunks_and_embeddings(
 
     flush_buffer()
 
-    embeddings = np.array([embed(chunk) for chunk in chunks])
+    # embeddings = np.array([embed(chunk) for chunk in chunks])
+    embeddings = np.vstack([embed(chunk) for chunk in chunks])
     return chunks, embeddings
 
 

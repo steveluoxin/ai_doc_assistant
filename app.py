@@ -1,3 +1,5 @@
+from fastapi import Form
+import json
 from fastapi import FastAPI
 from pydantic import BaseModel
 from rag import (
@@ -14,16 +16,45 @@ document = ""
 structure = {}
 chunks = []
 embeddings = []
+# embeddings will be built lazily after upload or first query
 
-# ========== 启动时加载文档（避免每次请求重算） ==========
+# ========== 启动时加载默认示例文档 ==========
 
 def load_document(path: str) -> str:
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+    """
+    支持加载 .md / .txt / .docx 作为默认文档
+    """
+    if path.endswith(".docx"):
+        from docx import Document
+        import io
 
-document = load_document("prd.txt")
+        doc = Document(path)
+        full_text = []
+
+        for para in doc.paragraphs:
+            style = para.style.name
+            text = para.text.strip()
+            if not text:
+                continue
+
+            if style.startswith("Heading 1"):
+                full_text.append(f"# {text}")
+            elif style.startswith("Heading 2"):
+                full_text.append(f"## {text}")
+            elif style.startswith("Heading 3"):
+                full_text.append(f"### {text}")
+            else:
+                full_text.append(text)
+
+        return "\n".join(full_text)
+
+    else:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+
+# 默认示例文档（如果用户没有上传）
+document = load_document("doc_example.docx")
 structure = analyze_document_structure(document)
-chunks, embeddings = build_trunks_and_embeddings(document)
 
 # ========== FastAPI ==========
 
@@ -35,6 +66,15 @@ class AskRequest(BaseModel):
 
 @app.post("/ask")
 def ask(req: AskRequest):
+    global chunks, embeddings, document
+
+    # Lazy build embeddings if not built yet
+    if not chunks or len(embeddings) == 0:
+        if document:
+            print("Building embeddings lazily...")
+            chunks, embeddings = build_trunks_and_embeddings(document)
+            print("Embeddings built.")
+
     # 所有任务类型都改写问题
     rewritten_query = rewrite_query(req.question, structure, task=req.task)
 
@@ -152,3 +192,36 @@ async def upload(file: UploadFile = File(...)):
     chunks, embeddings = build_trunks_and_embeddings(document)
 
     return {"message": f"Document '{file.filename}' uploaded and indexed successfully."}
+
+
+# ========== 新增 /result 路由用于处理表单提交并渲染 result.html ==========
+from fastapi import Form
+import json
+
+@app.post("/result", response_class=HTMLResponse)
+async def result(
+    request: Request,
+    rewritten_query: str = Form(...),
+    answer: str = Form(...),
+    chunks: str = Form(...),
+    document_content: str = Form(...)
+):
+    # 尝试解析 chunks 和 answer 字符串为对象
+    try:
+        chunks_obj = json.loads(chunks)
+    except Exception:
+        chunks_obj = chunks
+    try:
+        answer_obj = json.loads(answer)
+    except Exception:
+        answer_obj = answer
+    return templates.TemplateResponse(
+        "result.html",
+        {
+            "request": request,
+            "rewritten_query": rewritten_query,
+            "answer": answer_obj,
+            "chunks": chunks_obj,
+            "document_content": document
+        }
+    )

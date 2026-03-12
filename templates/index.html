@@ -116,6 +116,20 @@
                 font-weight: 600;
                 border-radius: 8px;
             }
+            .spinner {
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                border: 2px solid #fff;
+                border-top-color: transparent;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                vertical-align: middle;
+                margin-right: 6px;
+            }
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
         </style>
     </head>
     <body>
@@ -199,6 +213,11 @@
             </div>
 
             <h1>开始使用</h1>
+             <div id="demoCard" class="card" style="background-color:#eef5ff;border:1px solid #d6e4ff;">
+                <strong>💡 Demo提示：</strong>
+                当前系统默认使用示例文档 <strong>doc_example.docx</strong>。
+                您可以直接提问体验功能，也可以上传自己的文档进行分析。
+            </div>
             <div>
                 <div>
                     <h3>
@@ -206,6 +225,9 @@
                     </h3>
                     <input type="file" id="fileInput" />
                     <button onclick="upload()">上传</button>
+                    <p id="currentDoc" style="color:#666;font-size:13px;margin-top:6px;">
+                    当前使用文档：doc_example.docx（示例文档）
+                    </p>
                 </div>
 
                 <div>
@@ -217,43 +239,37 @@
                         <option value="advice">提出建议</option>
                     </select>
                 </div>
-
                 <div class="ask-container">
-                    <button class="ask-button" onclick="ask()">提问</button>
+                    <button class="ask-button" id="askButton" onclick="ask()">提问</button>
                 </div>
             </div>
 
-            <div class="section">
-                <h3>经过AI改写过的问题</h3>
-                <pre id="rewrite"></pre>
-            </div>
-
-            <div class="section">
-                <h3>生成的答案</h3>
-                <pre id="answer"></pre>
-            </div>
-
-            <div class="section">
-                <h3>检索到的片段 (带相似度评分)</h3>
-                <div id="chunks"></div>
-            </div>
 
             <script>
+                window.addEventListener('pageshow', function() {
+                    const button = document.getElementById("askButton");
+                    if (button) {
+                        button.disabled = false;
+                        button.textContent = "提问";
+                    }
+                });
+
                 async function ask() {
+                    const button = document.getElementById("askButton");
+                    const originalText = button.textContent;
+
+                    // 禁用按钮并显示loading
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner"></span> 提问中...';
+
                     const question = document.getElementById("question").value;
                     const task = document.getElementById("task").value;
-
                     if (!question) {
                         alert("Please enter a question.");
+                        button.disabled = false;
+                        button.textContent = originalText;
                         return;
                     }
-
-                    document.getElementById("rewrite").textContent =
-                        "Loading...";
-                    document.getElementById("rewrite").classList.add("loading");
-                    document.getElementById("answer").textContent =
-                        "Loading...";
-                    document.getElementById("answer").classList.add("loading");
 
                     try {
                         const response = await fetch("/ask", {
@@ -261,71 +277,50 @@
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ question, task }),
                         });
-
                         const data = await response.json();
-                        const chunksContainer =
-                            document.getElementById("chunks");
-                        chunksContainer.innerHTML = "";
 
-                        document
-                            .getElementById("rewrite")
-                            .classList.remove("loading");
-                        document
-                            .getElementById("answer")
-                            .classList.remove("loading");
-
-                        document.getElementById("rewrite").textContent =
-                            typeof data.rewritten_query === "string"
-                                ? data.rewritten_query
-                                : "";
-                        if (
-                            typeof data.answer === "object" &&
-                            data.answer !== null
-                        ) {
-                            document.getElementById("answer").textContent =
-                                JSON.stringify(data.answer, null, 2);
-                        } else {
-                            document.getElementById("answer").textContent =
-                                data.answer || "";
+                        let documentContent = "";
+                        const currentDocElem = document.getElementById("currentDoc");
+                        if (currentDocElem) {
+                            documentContent = currentDocElem.textContent || "";
                         }
-                        // Render retrieved chunks if provided by backend
-                        if (Array.isArray(data.chunks)) {
-                            data.chunks.forEach((chunk) => {
-                                const item = document.createElement("div");
-                                item.className = "card";
 
-                                const title = document.createElement("div");
-                                title.style.fontWeight = "bold";
-                                title.textContent =
-                                    "Module: " +
-                                    (chunk.module || "N/A") +
-                                    " | Score: " +
-                                    (chunk.score !== undefined
-                                        ? chunk.score
-                                        : "N/A");
+                        const form = document.createElement("form");
+                        form.method = "POST";
+                        form.action = "/result";
+                        form.style.display = "none";
 
-                                const content = document.createElement("div");
-                                content.style.marginTop = "5px";
-                                content.style.whiteSpace = "pre-wrap";
-                                content.textContent = chunk.content || "";
+                        const rq = document.createElement("input");
+                        rq.type = "hidden";
+                        rq.name = "rewritten_query";
+                        rq.value = typeof data.rewritten_query === "string" ? data.rewritten_query : "";
+                        form.appendChild(rq);
 
-                                item.appendChild(title);
-                                item.appendChild(content);
-                                chunksContainer.appendChild(item);
-                            });
-                        }
+                        const ans = document.createElement("input");
+                        ans.type = "hidden";
+                        ans.name = "answer";
+                        ans.value = Array.isArray(data.answer) || typeof data.answer === "object" ? JSON.stringify(data.answer) : (data.answer || "");
+                        form.appendChild(ans);
+
+                        const chunks = document.createElement("input");
+                        chunks.type = "hidden";
+                        chunks.name = "chunks";
+                        chunks.value = Array.isArray(data.chunks) ? JSON.stringify(data.chunks) : "";
+                        form.appendChild(chunks);
+
+                        const docContent = document.createElement("input");
+                        docContent.type = "hidden";
+                        docContent.name = "document_content";
+                        docContent.value = documentContent;
+                        form.appendChild(docContent);
+
+                        document.body.appendChild(form);
+                        form.submit();
+
                     } catch (error) {
-                        document
-                            .getElementById("rewrite")
-                            .classList.remove("loading");
-                        document
-                            .getElementById("answer")
-                            .classList.remove("loading");
-
-                        document.getElementById("rewrite").textContent = "";
-                        document.getElementById("answer").textContent =
-                            "Error: Failed to fetch response.";
-                        document.getElementById("chunks").innerHTML = "";
+                        alert("Error: Failed to fetch response.");
+                        button.disabled = false;
+                        button.textContent = originalText;
                     }
                 }
                 async function upload() {
@@ -347,6 +342,17 @@
 
                     const data = await response.json();
                     alert(data.message || data.error);
+                    if (data.message) {
+                        const name = file.name;
+                        document.getElementById("currentDoc").textContent =
+                            "当前使用文档：" + name;
+
+                        // 隐藏 Demo 卡片
+                        const demoCard = document.getElementById("demoCard");
+                        if (demoCard) {
+                            demoCard.style.display = "none";
+                        }
+                    }
                 }
                 function toggleCompare() {
                     const table = document.getElementById("compareTable");

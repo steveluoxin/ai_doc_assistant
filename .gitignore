@@ -1,6 +1,7 @@
 .env
 __pycache__/
 *.pyc
+cli_test.py
 
 # embedding model
 models/
