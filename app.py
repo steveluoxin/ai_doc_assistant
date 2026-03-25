@@ -1,6 +1,7 @@
 from fastapi import Form
 import json
 from fastapi import FastAPI
+from typing import Optional
 from pydantic import BaseModel
 from rag import (
     build_trunks_and_embeddings,
@@ -201,25 +202,28 @@ import json
 @app.post("/result", response_class=HTMLResponse)
 async def result(
     request: Request,
-    rewritten_query: str = Form(...),
-    answer: str = Form(...),
-    chunks: str = Form(...),
-    document_content: str = Form(...)
+    rewritten_query: Optional[str] = Form(None),
+    answer: Optional[str] = Form(None),
+    chunks: Optional[str] = Form(None),
+    document_content: Optional[str] = Form(None)
 ):
-    # 尝试解析 chunks 和 answer 字符串为对象
+    import json
+
     try:
-        chunks_obj = json.loads(chunks)
-    except Exception:
-        chunks_obj = chunks
+        chunks_obj = json.loads(chunks) if chunks else []
+    except:
+        chunks_obj = []
+
     try:
-        answer_obj = json.loads(answer)
-    except Exception:
+        answer_obj = json.loads(answer) if answer else ""
+    except:
         answer_obj = answer
+
     return templates.TemplateResponse(
         "result.html",
         {
             "request": request,
-            "rewritten_query": rewritten_query,
+            "rewritten_query": rewritten_query or "",
             "answer": answer_obj,
             "chunks": chunks_obj,
             "document_content": document
