@@ -278,6 +278,7 @@
                             body: JSON.stringify({ question, task }),
                         });
                         const data = await response.json();
+                        console.log("ASK response:", data);
 
                         let documentContent = "";
                         const currentDocElem = document.getElementById("currentDoc");
@@ -293,19 +294,21 @@
                         const rq = document.createElement("input");
                         rq.type = "hidden";
                         rq.name = "rewritten_query";
-                        rq.value = typeof data.rewritten_query === "string" ? data.rewritten_query : "";
+                        rq.value = data.rewritten_query || "";
                         form.appendChild(rq);
 
                         const ans = document.createElement("input");
                         ans.type = "hidden";
                         ans.name = "answer";
-                        ans.value = Array.isArray(data.answer) || typeof data.answer === "object" ? JSON.stringify(data.answer) : (data.answer || "");
+                        ans.value = typeof data.answer === "string"
+                            ? data.answer
+                            : JSON.stringify(data.answer || "");
                         form.appendChild(ans);
 
                         const chunks = document.createElement("input");
                         chunks.type = "hidden";
                         chunks.name = "chunks";
-                        chunks.value = Array.isArray(data.chunks) ? JSON.stringify(data.chunks) : "";
+                        chunks.value = JSON.stringify(data.chunks || []);
                         form.appendChild(chunks);
 
                         const docContent = document.createElement("input");
@@ -315,6 +318,12 @@
                         form.appendChild(docContent);
 
                         document.body.appendChild(form);
+                        console.log("Submitting to /result:", {
+                            rewritten_query: rq.value,
+                            answer: ans.value,
+                            chunks: chunks.value,
+                            document_content: docContent.value
+                        });
                         form.submit();
 
                     } catch (error) {
