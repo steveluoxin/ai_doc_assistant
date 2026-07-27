@@ -1,56 +1,44 @@
 import os
 import numpy as np
 
-# 判断是否使用 API embedding
-USE_API_EMBEDDING = os.getenv("USE_API_EMBEDDING", "false").lower() == "true"
+# By default we now prefer API embeddings. This keeps the Vercel serverless
+# bundle small (no torch / sentence-transformers). For local development you
+# can still opt into local embeddings by setting USE_API_EMBEDDING=false.
+USE_API_EMBEDDING = os.getenv("USE_API_EMBEDDING", "true").lower() == "true"
 
 if USE_API_EMBEDDING:
     try:
         from llm import get_embedding
     except ImportError:
         raise ImportError(
-            "USE_API_EMBEDDING=True 但是 llm.get_embedding 未找到，请确保 llm.py 配置正确"
+            "USE_API_EMBEDDING=true but llm.get_embedding is not available. "
+            "Ensure llm.py is present and DEEPSEEK_API_KEY is configured."
         )
 
     def embed(text: str) -> np.ndarray:
         """
-        使用 API 获取 embedding 并返回 numpy array。
+        Use the DeepSeek embedding API and return a numpy array.
         """
-        try:
-            return np.array(get_embedding(text))
-        except Exception as e:
-            raise RuntimeError(f"API embedding 调用失败: {e}")
+        return np.array(get_embedding(text), dtype=np.float32)
 
 else:
     try:
         from sentence_transformers import SentenceTransformer
     except ImportError:
         raise ImportError(
-            "USE_API_EMBEDDING=False 但是未安装 sentence-transformers，请执行 'pip install sentence-transformers torch'"
+            "USE_API_EMBEDDING=false but sentence-transformers is not installed. "
+            "Run: pip install sentence-transformers torch"
         )
 
-    # 初始化本地模型，只初始化一次
-    # model = SentenceTransformer("all-MiniLM-L6-v2", cache_folder="./models")
-
-    # def embed(text: str) -> np.ndarray:
-    #     """
-    #     使用本地 sentence-transformers 生成 embedding。
-    #     """
-    #     try:
-    #         return model.encode(text)
-    #     except Exception as e:
-    #         raise RuntimeError(f"本地 embedding 生成失败: {e}")
-    model = None
+    _model = None
 
     def embed(text: str) -> np.ndarray:
-        global model
-
-        if model is None:
-            print("Loading embedding model...")
-            model = SentenceTransformer("all-MiniLM-L6-v2", cache_folder="./models")
-            print("Embedding model loaded")
-
-        try:
-            return model.encode(text)
-        except Exception as e:
-            raise RuntimeError(f"本地 embedding 生成失败: {e}")
+        """
+        Use a local sentence-transformers model to generate embeddings.
+        """
+        global _model
+        if _model is None:
+            print("Loading local embedding model...")
+            _model = SentenceTransformer("all-MiniLM-L6-v2", cache_folder="./models")
+            print("Local embedding model loaded.")
+        return _model.encode(text)

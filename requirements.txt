@@ -1,11 +1,15 @@
 fastapi==0.110.0
 uvicorn==0.29.0
-sentence-transformers==2.6.1
-transformers==4.38.2
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.2
 numpy==1.26.4
 python-docx==1.1.0
 python-multipart==0.0.9
 openai==1.14.3
 python-dotenv==1.0.1
+requests==2.31.0
+upstash-redis>=1.7.0
+
+# Optional: for local embedding mode, also install:
+# sentence-transformers==2.6.1
+# transformers==4.38.2
+# --extra-index-url https://download.pytorch.org/whl/cpu
+# torch==2.2.2
