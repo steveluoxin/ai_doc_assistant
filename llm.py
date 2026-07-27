@@ -9,16 +9,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+# 25s timeout keeps us under Vercel's serverless limits while giving
+# the LLM enough time on cold starts.
+DEFAULT_TIMEOUT = int(os.getenv("DEEPSEEK_TIMEOUT", "25"))
 
-def deepseek_request(endpoint: str, payload: dict):
+
+def deepseek_request(endpoint: str, payload: dict, timeout_sec: int = DEFAULT_TIMEOUT):
     """统一 Deepseek API 请求"""
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
         "Content-Type": "application/json"
     }
     url = f"{DEEPSEEK_BASE_URL}/{endpoint}"
-    resp = requests.post(url, headers=headers, json=payload, timeout=10)
+    resp = requests.post(url, headers=headers, json=payload, timeout=timeout_sec)
     resp.raise_for_status()
     return resp.json()
 

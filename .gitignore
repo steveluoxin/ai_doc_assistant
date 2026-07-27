@@ -5,3 +5,6 @@ cli_test.py
 
 # embedding model
 models/
+
+# macOS
+.DS_Store
