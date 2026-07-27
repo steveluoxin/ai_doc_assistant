@@ -2,7 +2,7 @@
 name = "ai-doc-assistant"
 version = "0.1.0"
 description = "AI Product Document Assistant (RAG demo)"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = [
     "fastapi==0.110.0",
